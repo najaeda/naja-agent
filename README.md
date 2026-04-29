@@ -1,1 +1,1 @@
-# naja-mcp
+# naja-agent
