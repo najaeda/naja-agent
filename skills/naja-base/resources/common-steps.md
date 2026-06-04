@@ -62,11 +62,14 @@ import najaeda.netlist as netlist
 input_path = Path("circuit.v")
 design_dir = input_path.resolve().parent
 
-try:
-    netlist.load_primitives('xilinx')
-except Exception as exc:
-    logger.error(f"Failed to load Xilinx primitives: {exc}")
-    return 1
+is_xilinx_fpga_netlist = False  # set True only for Xilinx FPGA designs
+
+if is_xilinx_fpga_netlist:
+    try:
+        netlist.load_primitives('xilinx')
+    except Exception as exc:
+        logger.error(f"Failed to load Xilinx primitives: {exc}")
+        return 1
 
 netlist.load_liberty([str(f) for f in Path(design_dir).glob("*.lib")])
 top = netlist.load_verilog(
@@ -77,6 +80,31 @@ if top is None:
     raise SystemExit(1)
 ```
 
+Règle:
+- `load_primitives('xilinx')` only for Xilinx FPGA netlists
+- standard ASIC / Liberty flows: load `.lib` files, then `load_verilog()`
+
+## Pattern 2b: Discover usable nets before editing
+
+```python
+named_nets = [n for n in top.get_nets() if n.get_name()]
+
+for net in named_nets:
+    terms = list(net.get_terms())
+    has_primary_output = any(t.is_output() and t.get_instance().is_top() for t in terms)
+    has_sequential_fanout = any(t.get_instance().is_sequential() for t in terms)
+    if has_primary_output or has_sequential_fanout:
+        print(net.get_name())
+```
+
+Règles:
+- Ne jamais supposer que `list(top.get_nets())[0]` est un net utile
+- Filtrer d'abord les nets nommés
+- Privilégier un net visible par une sortie primaire ou un élément séquentiel si la modification doit être détectable par Kepler / ECO / vérification formelle
+
+Note Kepler:
+- If the change does not reach a primary output or a DFF input, Kepler may not surface it
+- anonymous or internal-only nets are usually poor verification targets
 ---
 
 ## Pattern 2: Query connectivity safely (generator APIs)
@@ -103,9 +131,35 @@ in_terms = list(candidate.get_input_bit_terms())
 
 if in_terms:
     new_net = top.create_net("new_signal")
-    in_terms[0].disconnect_lower_net()  # disconnect first
-    in_terms[0].connect_lower_net(new_net)  # then reconnect
+    in_terms[0].disconnect_upper_net()  # disconnect first on the parent-facing side
+    in_terms[0].connect_upper_net(new_net)  # then reconnect
 ```
+
+### Mini workflow: connect, move, and insert
+
+```python
+# a) Insert a child instance and connect it
+child = top.create_child_instance("my_cell", "u0")
+din = child.get_term("A")
+dout = child.get_term("Y")
+din.connect_upper_net(top.get_net("src_net"))
+dout.connect_upper_net(top.create_net("mid_net"))
+
+# b) Disconnect a term and reconnect it elsewhere
+term = child.get_term("A")
+term.disconnect_upper_net()
+term.connect_upper_net(top.get_net("alt_src_net"))
+
+# c) Insert a cell in series on a logical path
+path_net = top.get_net("logic_path")
+mid = top.create_net("logic_path_mid")
+buf = top.create_child_instance("BUF_X1", "u_buf")
+buf.get_term("A").disconnect_upper_net()
+buf.get_term("A").connect_upper_net(path_net)
+buf.get_term("Y").connect_upper_net(mid)
+```
+
+Note: when the documentation asks for a lower-side operation or when you are manipulating the top-level view, use `connect_lower_net()` / `disconnect_lower_net()` instead.
 
 ---
 
@@ -143,6 +197,8 @@ top.dump_verilog(str(output_path))
 - list() wrapping for get_output_bit_terms/get_input_bit_terms/get_leaf_children
 - Output path ends with .v
 - Output directory already exists
+- Named nets are filtered before any structural edit
+- Upper/lower direction is chosen deliberately for every term operation
 
 ---
 

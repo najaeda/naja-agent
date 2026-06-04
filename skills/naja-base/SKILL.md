@@ -137,13 +137,19 @@ Navigation, statistics, transformation, export, utilities
 
 7. **Get all nets**
    ```python
+    named_nets = [n for n in inst.get_nets() if n.get_name()]
    nets = list(inst.get_nets())
    ```
 
 8. **Connect/disconnect**
    ```python
-   term.connect_lower_net(net)
-   term.disconnect_lower_net()
+    # Child instance term: use upper API to wire the parent-facing interface.
+    term.connect_upper_net(net)
+    term.disconnect_upper_net()
+
+    # Top-level or lower-view manipulation: use lower API explicitly.
+    term.connect_lower_net(net)
+    term.disconnect_lower_net()
    ```
 
 9. **Create nets and terminals**
@@ -193,7 +199,7 @@ Navigation, statistics, transformation, export, utilities
 
 ✗ **Never:**
 - Invent API names not in [api-functions.md](resources/api-functions.md)
-- Use `connect()` instead of `connect_lower_net()` or `connect_upper_net()`
+- Do not rely on standalone `connect()` or `disconnect()`; use the explicit upper/lower term APIs
 - Import `naja_utils` (internal maintainer-only)
 - Forget `list()` wrapping for generators
 - Export without `.v` suffix or missing directory
@@ -209,6 +215,18 @@ Navigation, statistics, transformation, export, utilities
 - Validate export path (suffix `.v`, directory exists)
 - Use `netlist.apply_dle()` (native, not manual)
 - Reference [api-rules.md](resources/api-rules.md) for forbidden APIs
+- For a term that belongs to an instance child, prefer `connect_upper_net()` / `disconnect_upper_net()`; use lower only for the top or when the documentation explicitly asks for it
+- Expect `RuntimeError` if you connect a term with the wrong design side; mismatch errors are usually a sign that upper/lower was inverted
+
+---
+
+## Common Pitfalls
+
+1. Using `list(top.get_nets())[0]` as a candidate net. The first net is often anonymous, internal, or irrelevant.
+2. Connecting a child term with `connect_lower_net()` when the operation should target the parent-facing interface.
+3. Calling `disconnect()` alone. Use `term.disconnect_upper_net()` or `term.disconnect_lower_net()` explicitly.
+4. Modifying a net with no observable fanout. Prefer a named net that reaches a primary output or a sequential element.
+5. Assuming any net returned by `get_nets()` is useful. Filter named nets first before selecting a modification target.
 
 ---
 
@@ -341,8 +359,15 @@ if __name__ == "__main__":
 | [common-steps.md](resources/common-steps.md) | 5 approved workflow patterns |
 | [script-template.md](resources/script-template.md) | Argument parsing & error handling templates |
 | [api-rules.md](resources/api-rules.md) | Forbidden/deprecated API list (canonical) |
+| [kepler-formal-mcp-tutorial.md](resources/kepler-formal-mcp-tutorial.md) | How to use Kepler Formal MCP for formality checks
 
 **All scripts must reference these files, not invent API calls.**
+
+## When To Use The Kepler Formal Tutorial
+
+Open [resources/kepler-formal-mcp-tutorial.md](resources/kepler-formal-mcp-tutorial.md) when you need to:
+
+- prepare a design for formal verification;
 
 ---
 

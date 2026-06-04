@@ -1,67 +1,31 @@
-# naja-mcp
+# Naja MCP Skills
 
-## Setup
+This repository contains a single Claude skill package for Naja-related MCP workflows.
 
-This repository wraps the upstream [Naja](https://github.com/najaeda/naja) project in an MCP server.
-The server expects the Python package from the `thirdparty/naja` submodule to be available in your environment.
+## What is here
 
-The quickest path is to build the vendored Naja sources with the provided helper script:
+- `skills/naja-base/SKILL.md`: the main skill definition. It explains how to generate Python scripts for Naja EDA netlist transformations and how to follow the required workflow.
+- `skills/naja-base/resources/`: reference material used by the skill.
+  - `api-functions.md`: API catalog and function reference.
+  - `api-functions-old.md`: older API reference material kept for comparison.
+  - `api-rules.md`: rules and forbidden API patterns.
+  - `common-steps.md`: standard workflows and recurring patterns.
+  - `kepler-formal-mcp-tutorial.md`: tutorial material.
+  - `script-template.md`: recommended script structure.
+  - `working-examples.md`: example scripts and usage patterns.
+- `skills/naja-base/scripts/naja_utils.py`: helper utilities used by the skill.
+- `docs/`: documentation for setup and usage.
 
-```bash
-./build_naja.sh
-```
+## Purpose
 
-If you want the script to install the common system dependencies for your platform first, run:
+The skill is designed to help generate safe, consistent Python scripts for Naja EDA tasks such as:
 
-```bash
-./build_naja.sh --install-deps
-```
+- loading Verilog or Liberty data
+- inspecting and modifying netlists
+- traversing hierarchy and terminals
+- applying optimizations like DLE or constant propagation
+- exporting results back to Verilog
 
-By default the build uses `thirdparty/naja/build/` and installs into `$NAJA_INSTALL` if that environment variable is set.
-If `NAJA_INSTALL` is not set, the script uses a local install prefix inside the build directory.
+## Recommended entry point
 
-On Ubuntu, the upstream Naja project expects these packages:
-
-```bash
-sudo apt-get install g++ libboost-dev python3.9-dev capnproto libcapnp-dev libtbb-dev pkg-config bison flex doxygen
-```
-
-Using nix-shell:
-
-```bash
-nix-shell -p cmake boost python3 doxygen capnproto bison flex pkg-config tbb_2021_8
-```
-
-On macOS with Homebrew:
-
-```bash
-brew install cmake doxygen capnp tbb bison flex boost
-```
-
-Make sure the Homebrew versions of `bison` and `flex` take precedence over the macOS defaults:
-
-```bash
-export PATH="/opt/homebrew/opt/flex/bin:/opt/homebrew/opt/bison/bin:$PATH"
-```
-
-If you want to build Naja manually instead of using the helper script, the upstream flow is:
-
-```bash
-export NAJA_INSTALL=<path_to_installation_dir>
-mkdir build
-cd build
-cmake <path_to_naja_sources_dir> -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$NAJA_INSTALL
-make
-make test
-make install
-```
-
-For documentation:
-
-```bash
-cd build
-make docs
-make install
-```
-
-The MCP server entry point is `server.py`.
+If you want to use this skill in Claude, read `docs/setup.md`.
