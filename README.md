@@ -1,4 +1,4 @@
-# Naja MCP Skills
+# Naja SKILLS
 
 This repository contains a single Claude skill package for Naja-related MCP workflows.
 
