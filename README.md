@@ -14,4 +14,4 @@ The skill is designed to help generate safe, consistent Python scripts for Naja 
 
 ## Recommended entry point
 
-If you want to use this skill in Claude, read `docs/setup.md`.
+If you want to use this skill in Claude, read `[docs/setup.md`.](https://github.com/najaeda/naja-agent/blob/main/docs/setup.md)
